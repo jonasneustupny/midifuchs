@@ -1,19 +1,7 @@
 /* component hit detection */
 
 #include <string.h>
-
-#define HITDETECTION_DETECTION_THRESHOLD     (250) /* mV */
-#define HITDETECTION_DETECTION_TIME_INTERVAL (100) /* mS */
-#define HITDETECTION_DETECTION_SAMPLING_TIME (1000) /* uS */
-#define HITDETECTION_BLOCK_NUM_SAMPLES       (1000.0 * HITDETECTION_DETECTION_SAMPLING_TIME / HITDETECTION_DETECTION_SAMPLING_TIME)
-#define HITDETECTION_SIGNAL_BUFFER_SIZE      (500) /* num of elems */
-#define HITDETECTION_QUALIFICATION_THRESHOLD (4) /* num samples */
-
-int hitDetection_initialize(void);
-
-/* The process function takes as an input the voltage of the sensor
-   and returns 1 if the signal has been detected as a note or 0 if not. */
-int hitDetection_process(unsigned int i_analogValue);
+#include "hitdetection.h"
 
 typedef struct {
   unsigned int signal[HITDETECTION_SIGNAL_BUFFER_SIZE];
@@ -27,20 +15,20 @@ typedef struct {
 static hitDetection_t hitDetection_instance;
 static int hitDetection_pointerDistance(unsigned int small, unsigned int big, unsigned int wrap);
 
-int hitDetection_initialize(void) {
+int hitDetection_initialize() {
     memset(&hitDetection_instance, 0, sizeof(hitDetection_t));
     return 0;
 }
 
 int hitDetection_process(unsigned int i_analogValue) {
-  int ret = 0;
-
-  hitDetection_instance.signal[hitDetection_instance.wPoint] = i_analogValue;
+    int ret = 0;
+  
+    hitDetection_instance.signal[hitDetection_instance.wPoint] = i_analogValue;
     hitDetection_instance.wPoint = (hitDetection_instance.wPoint + 1);
     if(hitDetection_instance.wPoint >= HITDETECTION_SIGNAL_BUFFER_SIZE) {
       hitDetection_instance.wPoint = 0;
     }
-    hitDetection_instance.rPoint = hitDetection_instance.wPoint;
+    hitDetection_instance.rPoint = hitDetection_instance.wPoint - 1;
 
     if(1 == hitDetection_instance.hitDetected) {
       if(hitDetection_pointerDistance(hitDetection_instance.hitPoint, hitDetection_instance.rPoint, HITDETECTION_SIGNAL_BUFFER_SIZE) >= HITDETECTION_BLOCK_NUM_SAMPLES) {
