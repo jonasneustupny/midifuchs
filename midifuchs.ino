@@ -1,25 +1,18 @@
-#include "hitdetection.h"
-//#include "hitdetection.c"
-#include "calculateVelocity.h"
+/* midifuchs.ino */
 
-const int midiCommandNoteOn = 144;
-const int noteC4 = 48; // Note C4
-const int octave = 12; // 1 Oktave
-const int MAX = 127;
-const int MIDDLE = 80; // Wird bei Midi als "mittlere" Velocity genutzt.
-const int OFF = 0;
-const int note = noteC4;
+#include "Midifuchs_CalculateVelocity.h"
+#include "Midifuchs_Midi.h"
+#include "Midifuchs_HitDetection.h"
 
-static void noteOn(int midiCommand, int midiNote, int midiVelocity);
-extern int hitDetection_initialize();
-extern int hitDetection_process(unsigned int i_analogValue);
+//#define VERBOSE (0)
 
+#define MIDIFUCHS_BAUDRATE_SERIAL (115200)
+#define MIDIFUCHS_BAUDRATE_MIDI   (31250)
 
 // the setup routine runs once when you press reset:
 void setup() {
   // initialize serial communication at 9600 bits per second:
-  int a = hitDetection_initialize();
-  (void)a;
+  (void)Midifuchs_HitDetection_initialize();
 
   /* WICHTIG:
     Auf dem Leonardo-Board muss unbedingt "Serial1" genutzt werden, da "Serial" den USB-Port anspricht.
@@ -28,7 +21,7 @@ void setup() {
   //Serial.begin(31250); // "31250" ist die Baudrate für MIDI!
   
   // Für das Logging!!
-  Serial.begin(9600);
+  Serial.begin(MIDIFUCHS_BAUDRATE_SERIAL);
   while (!Serial) ; // while the serial stream is not open, do nothing:
 }
 
@@ -37,25 +30,15 @@ void loop() {
   // read the input on analog pin 0:
   unsigned int sensorValue = (unsigned int)analogRead(A0);
   // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
-  float voltage = sensorValue * (5.0 / 1023.0);
+  // float voltage = sensorValue * (5.0 / 1023.0);
   // print out the value you read:
+#ifdef VERBOSE
+  Serial.println("SensorValue " + String(sensorValue));
+#endif
+  if(1 == Midifuchs_HitDetection_process(sensorValue)) {
 
-  Serial.println("sensorValue");
-  Serial.println(sensorValue);
-  if(1 == hitDetection_process(sensorValue)) {
-    noteOn(midiCommandNoteOn, note, calculateVelocity(sensorValue));        
-    noteOn(midiCommandNoteOn, note, OFF);
-    Serial.println("Sendet MIDI-Note: ");
+    Midifuchs_Midi_NoteOn( MIDIFUCHS_MIDI_NOTE_C4, Midifuchs_CalculateVelocity_calculate(sensorValue));        
+    Midifuchs_Midi_NoteOff(MIDIFUCHS_MIDI_NOTE_C4, MIDIFUCHS_MIDI_VELOCITY_OFF);
   }
-
-  Serial.println(sensorValue);
-  delayMicroseconds(1000); // 1.5ms
+  delayMicroseconds(MIDIFUCHS_HITDETECTION_DETECTION_SAMPLING_TIME);
 }
-
-void noteOn(int midiCommand, int midiNote, int midiVelocity) {
-  //midiVelocity = (midiVelocity < MAX) ? midiVelocity : MAX; // Wenn Velocity über 127, dann auf 127 setzen, damit MIDI-Maxwert nicht überstiegen wird!
-  Serial.write(midiCommand);
-  Serial.write(midiNote);
-  Serial.write(midiVelocity);
-}
-
